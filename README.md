@@ -11,10 +11,10 @@ cargo build
 ### 2. 运行工作流 (Run a workflow)
 ```bash
 # 使用示例工作流
-cargo run -- -f example.yaml
+cargo run -- -f examples/example.yaml
 
 # 使用日志输出
-RUST_LOG=info cargo run -- -f example.yaml
+RUST_LOG=info cargo run -- -f examples/example.yaml
 
 # 运行自定义工作流
 cargo run -- -f /path/to/your/workflow.yaml
@@ -23,7 +23,7 @@ cargo run -- -f /path/to/your/workflow.yaml
 ### 3. 发布构建 (Release build - optimized)
 ```bash
 cargo build --release
-./target/release/workflow-engine -f example.yaml
+./target/release/workflow-engine -f examples/example.yaml
 ```
 
 ## YAML 工作流格式 (Workflow Format)
