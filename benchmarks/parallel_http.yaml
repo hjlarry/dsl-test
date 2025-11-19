@@ -1,0 +1,51 @@
+name: "Performance Benchmark - Parallel HTTP"
+version: "1.0"
+
+# 性能测试：并行HTTP请求
+# 目的：测试I/O密集型任务和异步处理能力
+
+global:
+  parallel_count: 20  # 并行HTTP请求数量
+
+nodes:
+  - id: "init"
+    type: "script"
+    name: "Initialize Tasks"
+    params:
+      language: "python"
+      script: |
+        import json
+        count = {{ global.parallel_count }}
+        # 使用不同的用户ID来模拟不同的请求
+        print(json.dumps(list(range(1, count + 1))))
+
+  - id: "parallel_http"
+    type: "loop"
+    needs: ["init"]
+    name: "Parallel HTTP Requests"
+    params:
+      items: "{{ nodes.init.output.stdout }}"
+      steps:
+        - id: "fetch_user"
+          type: "http"
+          params:
+            method: "GET"
+            url: "https://jsonplaceholder.typicode.com/users/{{ loop.item }}"
+
+  - id: "summary"
+    type: "script"
+    needs: ["parallel_http"]
+    params:
+      language: "python"
+      script: |
+        import json
+        results = {{ nodes.parallel_http.output.results }}
+        
+        successful = sum(1 for r in results if r.get('fetch_user', {}).get('success', False))
+        
+        summary = {
+            "total_requests": len(results),
+            "successful": successful,
+            "status": "completed"
+        }
+        print(json.dumps(summary))

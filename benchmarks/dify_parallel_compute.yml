@@ -1,0 +1,298 @@
+app:
+  description: 'Performance benchmark for parallel computation - Testing Fibonacci calculation'
+  icon: ⚡
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: Performance Benchmark - Parallel Compute
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.4.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: start-source-init-target
+      source: start
+      sourceHandle: source
+      target: init
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: iteration
+      id: init-source-iteration-target
+      source: init
+      sourceHandle: source
+      target: iteration
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: true
+        iteration_id: iteration
+        sourceType: iteration-start
+        targetType: code
+      id: iteration-start-source-compute-target
+      source: iteration-start
+      sourceHandle: source
+      target: compute
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        sourceType: iteration
+        targetType: code
+      id: iteration-source-summary-target
+      source: iteration
+      sourceHandle: source
+      target: summary
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: end
+      id: summary-source-end-target
+      source: summary
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+    nodes:
+    - data:
+        desc: 'Performance benchmark: parallel computation test'
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: parallel_count
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: parallel_count
+        - label: fib_n
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: fib_n
+      height: 116
+      id: start
+      position:
+        x: 30
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(parallel_count: int) -> dict:\n    \"\"\"Initialize task array\"\"\"\n    return {\n        \"array\": list(range(int(parallel_count)))\n    }\n"
+        code_language: python3
+        desc: Create array for parallel tasks
+        outputs:
+          array:
+            type: array[number]
+        selected: false
+        title: Initialize Tasks
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - parallel_count
+          variable: parallel_count
+      height: 54
+      id: init
+      position:
+        x: 334
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Parallel computation of Fibonacci numbers
+        error_handle_mode: terminated
+        height: 300
+        is_parallel: true
+        iterator_selector:
+        - init
+        - array
+        output_selector: []
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: iteration-start
+        title: Parallel Compute
+        type: iteration
+        width: 500
+      height: 300
+      id: iteration
+      position:
+        x: 638
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 500
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: iteration-start
+      parentId: iteration
+      position:
+        x: 24
+        y: 68
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+    - data:
+        code: "def main(fib_n: int, item: int) -> dict:\n    \"\"\"Compute Fibonacci number recursively (intentionally inefficient)\"\"\"\n    import time\n    \n    def fibonacci(n: int) -> int:\n        if n <= 1:\n            return n\n        return fibonacci(n - 1) + fibonacci(n - 2)\n    \n    start_time = time.time()\n    result = fibonacci(int(fib_n))\n    elapsed = time.time() - start_time\n    \n    return {\n        \"task_id\": item,\n        \"n\": int(fib_n),\n        \"result\": result,\n        \"elapsed_seconds\": elapsed\n    }\n"
+        code_language: python3
+        desc: Recursive Fibonacci calculation
+        isInIteration: true
+        iteration_id: iteration
+        outputs:
+          elapsed_seconds:
+            type: number
+          n:
+            type: number
+          result:
+            type: number
+          task_id:
+            type: number
+        selected: false
+        title: Compute Fibonacci
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - fib_n
+          variable: fib_n
+        - value_selector:
+          - sys
+          - item
+          variable: item
+      height: 54
+      id: compute
+      parentId: iteration
+      position:
+        x: 108
+        y: 68
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(iteration_output: list) -> dict:\n    \"\"\"Summarize computation results\"\"\"\n    import json\n    \n    total_tasks = len(iteration_output)\n    \n    # Calculate stats\n    total_time = sum([r.get('elapsed_seconds', 0) for r in iteration_output])\n    avg_time = total_time / total_tasks if total_tasks > 0 else 0\n    \n    # Find min and max\n    times = [r.get('elapsed_seconds', 0) for r in iteration_output]\n    min_time = min(times) if times else 0\n    max_time = max(times) if times else 0\n    \n    summary = {\n        \"total_tasks\": total_tasks,\n        \"total_computation_time\": round(total_time, 3),\n        \"average_time\": round(avg_time, 3),\n        \"min_time\": round(min_time, 3),\n        \"max_time\": round(max_time, 3),\n        \"status\": \"completed\",\n        \"details\": json.dumps(iteration_output, indent=2)\n    }\n    \n    return summary\n"
+        code_language: python3
+        desc: Calculate summary statistics
+        outputs:
+          average_time:
+            type: number
+          details:
+            type: string
+          max_time:
+            type: number
+          min_time:
+            type: number
+          status:
+            type: string
+          total_computation_time:
+            type: number
+          total_tasks:
+            type: number
+        selected: false
+        title: Summary
+        type: code
+        variables:
+        - value_selector:
+          - iteration
+          - output
+          variable: iteration_output
+      height: 54
+      id: summary
+      position:
+        x: 1198
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Performance test results
+        outputs:
+        - value_selector:
+          - summary
+          - total_tasks
+          variable: total_tasks
+        - value_selector:
+          - summary
+          - total_computation_time
+          variable: total_computation_time
+        - value_selector:
+          - summary
+          - average_time
+          variable: average_time
+        - value_selector:
+          - summary
+          - min_time
+          variable: min_time
+        - value_selector:
+          - summary
+          - max_time
+          variable: max_time
+        - value_selector:
+          - summary
+          - status
+          variable: status
+        - value_selector:
+          - summary
+          - details
+          variable: details
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end
+      position:
+        x: 1502
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244

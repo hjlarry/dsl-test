@@ -1,0 +1,75 @@
+name: "Performance Benchmark - Parallel Computation"
+version: "1.0"
+
+# 性能测试：并行计算斐波那契数列
+# 目的：测试并行执行能力和CPU密集型任务处理
+
+global:
+  fib_n: 35  # 斐波那契数列的第N项（35约需1-2秒计算）
+  parallel_count: 10  # 并行任务数量
+
+nodes:
+  # 创建并行任务数组
+  - id: "init"
+    type: "script"
+    name: "Initialize Tasks"
+    params:
+      language: "python"
+      script: |
+        import json
+        count = {{ global.parallel_count }}
+        print(json.dumps(list(range(count))))
+
+  # 并行计算循环
+  - id: "parallel_compute"
+    type: "loop"
+    needs: ["init"]
+    name: "Parallel Fibonacci Computation"
+    params:
+      items: "{{ nodes.init.output.stdout }}"
+      steps:
+        - id: "compute_fib"
+          type: "script"
+          params:
+            language: "python"
+            script: |
+              import json
+              import time
+              
+              def fibonacci(n):
+                  """递归计算斐波那契数列（故意低效以增加计算时间）"""
+                  if n <= 1:
+                      return n
+                  return fibonacci(n - 1) + fibonacci(n - 2)
+              
+              n = {{ global.fib_n }}
+              start_time = time.time()
+              result = fibonacci(n)
+              elapsed = time.time() - start_time
+              
+              output = {
+                  "task_id": {{ loop.index }},
+                  "n": n,
+                  "result": result,
+                  "elapsed_seconds": elapsed
+              }
+              print(json.dumps(output))
+
+  # 汇总结果
+  - id: "summary"
+    type: "script"
+    needs: ["parallel_compute"]
+    params:
+      language: "python"
+      script: |
+        import json
+        
+        # Simple summary
+        parallel_count = {{ global.parallel_count }}
+        fib_n = {{ global.fib_n }}
+        
+        summary = {
+            "message": f"Completed {parallel_count} parallel Fibonacci({fib_n}) calculations",
+            "status": "success"
+        }
+        print(json.dumps(summary))
