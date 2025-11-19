@@ -1,5 +1,15 @@
 # Workflow Engine - User Guide
 
+🚀 **高性能、可扩展的分布式工作流引擎**
+
+## ✨ 核心特性 (Key Features)
+- **分布式执行**: 支持多机并行执行，线性扩展性能 (New!)
+- **高性能**: 基于 Rust 构建，极低的资源占用
+- **多语言支持**: 内置 Python/JavaScript 脚本执行
+- **丰富的节点**: 支持 HTTP, LLM, Shell, File, Loop 等 11 种节点
+- **灵活部署**: 支持 CLI 单机运行、Webhook 服务模式、分布式集群模式
+
+
 ## 如何运行 (How to Run)
 
 ### 1. 构建项目 (Build the project)
@@ -60,6 +70,40 @@ curl -X POST http://localhost:3000/execute \
   "error": null
 }
 ```
+
+### 5. 分布式执行模式 (Distributed Mode) 🚀
+支持多机分布式执行，显著提升大规模工作流的执行效率。
+
+**架构**:
+- **Coordinator**: 负责任务调度和状态管理
+- **Worker**: 负责执行具体任务 (支持水平扩展)
+
+**启动步骤**:
+
+1. **启动 Coordinator**:
+```bash
+./target/release/workflow-engine coordinator -p 8080
+```
+
+2. **启动 Workers** (可以在不同机器上):
+```bash
+# Worker 1
+./target/release/workflow-engine worker -i worker-1 -p 3001 -c http://localhost:8080
+
+# Worker 2
+./target/release/workflow-engine worker -i worker-2 -p 3002 -c http://localhost:8080
+```
+
+3. **提交工作流**:
+```bash
+./target/release/workflow-engine submit -f benchmarks/distributed_test.yaml -c http://localhost:8080
+```
+
+**性能优势**:
+- 真正的并行执行
+- 线性扩展能力
+- 适合大规模并发任务 (如批量爬虫、数据处理)
+
 
 ## YAML 工作流格式 (Workflow Format)
 
