@@ -29,6 +29,38 @@ cargo build --release
 ./target/release/workflow-engine -f examples/example.yaml
 ```
 
+### 4. Webhook 服务模式 (Server Mode)
+启动 HTTP 服务器，通过 API 触发工作流：
+
+```bash
+# 启动服务器 (默认端口 3000)
+cargo run -- serve --port 3000
+```
+
+**触发工作流**:
+```bash
+curl -X POST http://localhost:3000/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file": "examples/example.yaml",
+    "inputs": {
+      "message": "Hello from Webhook",
+      "count": 100
+    }
+  }'
+```
+
+**响应**:
+```json
+{
+  "status": "success",
+  "outputs": {
+    "node_id": { ... }
+  },
+  "error": null
+}
+```
+
 ## YAML 工作流格式 (Workflow Format)
 
 ### 基础结构

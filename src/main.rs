@@ -4,7 +4,9 @@ mod template;
 mod nodes;
 mod engine;
 
-use clap::Parser;
+mod server;
+
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use anyhow::{Context, Result};
 use std::fs;
@@ -13,13 +15,37 @@ use engine::Engine;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    // Keep these as optional for backward compatibility (default run mode)
     /// Path to the workflow YAML file
     #[arg(short, long, value_name = "FILE")]
-    file: PathBuf,
+    file: Option<PathBuf>,
 
     /// Input parameters in key=value format
     #[arg(short, long, value_name = "KEY=VALUE")]
-    input: Vec<String>,
+    input: Option<Vec<String>>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run a workflow file (default)
+    Run {
+        /// Path to the workflow YAML file
+        #[arg(short, long, value_name = "FILE")]
+        file: PathBuf,
+
+        /// Input parameters in key=value format
+        #[arg(short, long, value_name = "KEY=VALUE")]
+        input: Vec<String>,
+    },
+    /// Start the webhook server
+    Serve {
+        /// Port to listen on
+        #[arg(short, long, default_value = "3000")]
+        port: u16,
+    },
 }
 
 #[tokio::main]
@@ -30,23 +56,47 @@ async fn main() -> Result<()> {
     env_logger::init();
     let cli = Cli::parse();
 
-    println!("🚀 Loading workflow from: {:?}", cli.file);
+    match cli.command {
+        Some(Commands::Serve { port }) => {
+            server::run_server(port).await?;
+        }
+        Some(Commands::Run { file, input }) => {
+            run_workflow(file, input).await?;
+        }
+        None => {
+            // Default behavior: check if file arg is present
+            if let Some(file) = cli.file {
+                let input = cli.input.unwrap_or_default();
+                run_workflow(file, input).await?;
+            } else {
+                // Print help if no args
+                use clap::CommandFactory;
+                Cli::command().print_help()?;
+            }
+        }
+    }
+    
+    Ok(())
+}
 
-    let content = fs::read_to_string(&cli.file)
-        .with_context(|| format!("Could not read file `{:?}`", cli.file))?;
+async fn run_workflow(file: PathBuf, input: Vec<String>) -> Result<()> {
+    println!("🚀 Loading workflow from: {:?}", file);
+
+    let content = fs::read_to_string(&file)
+        .with_context(|| format!("Could not read file `{:?}`", file))?;
 
     let mut workflow: schema::Workflow = serde_yaml::from_str(&content)
         .context("Failed to parse YAML workflow")?;
 
     // Override/Add globals from CLI
-    for input in cli.input {
-        if let Some((key, value_str)) = input.split_once('=') {
+    for inp in input {
+        if let Some((key, value_str)) = inp.split_once('=') {
             let value = serde_json::from_str(value_str)
                 .unwrap_or_else(|_| serde_json::Value::String(value_str.to_string()));
             
             workflow.global.insert(key.to_string(), value);
         } else {
-            log::warn!("Invalid input format: {}", input);
+            log::warn!("Invalid input format: {}", inp);
         }
     }
 
