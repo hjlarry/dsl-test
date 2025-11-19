@@ -144,6 +144,7 @@ impl Engine {
         &self.node_memory
     }
 
+    #[allow(dead_code)]
     pub fn get_global_memory(&self) -> &GlobalMemory {
         &self.global_memory
     }

@@ -54,6 +54,7 @@ impl NodeMemory {
         self.outputs.insert(node_id, output);
     }
 
+    #[allow(dead_code)]
     pub fn get(&self, node_id: &str) -> Option<NodeOutput> {
         self.outputs.get(node_id).map(|v| v.clone())
     }
