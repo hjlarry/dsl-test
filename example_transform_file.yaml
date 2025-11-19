@@ -1,0 +1,53 @@
+name: "Transform和File节点测试"
+version: "1.0"
+
+nodes:
+  # 1. 获取JSON数据
+  - id: "fetch"
+    type: "http"
+    name: "获取数据"
+    params:
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/users"
+
+  # 2. Transform - 提取用户名和邮箱
+  - id: "extract_users"
+    type: "transform"
+    name: "提取用户信息"
+    needs: ["fetch"]
+    params:
+      input: "{{ nodes.fetch.output.body }}"
+      extract:
+        names: "$[0:3].name"
+        emails: "$[0:3].email"
+        cities: "$[0:3].address.city"
+
+  # 3. 保存到文件
+  - id: "save_data"
+    type: "file"
+    name: "保存结果"
+    needs: ["extract_users"]
+    params:
+      operation: "write"
+      path: "/tmp/users_extract.json"
+      content: "{{ nodes.extract_users.output }}"
+
+  # 4. 读取文件验证
+  - id: "read_back"
+    type: "file"
+    name: "读取确认"
+    needs: ["save_data"]
+    params:
+      operation: "read"
+      path: "/tmp/users_extract.json"
+
+  # 5. 显示结果
+  - id: "show_result"
+    type: "shell"
+    name: "显示结果"
+    needs: ["read_back"]
+    params:
+      command: |
+        echo "✅ Transform 和 File 节点测试成功"
+        echo "文件路径: {{ nodes.save_data.output.path }}"
+        echo "文件大小: {{ nodes.save_data.output.bytes_written }} 字节"

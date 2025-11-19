@@ -358,6 +358,289 @@ pub fn get_executor(node_type: &str) -> Result<Box<dyn NodeExecutor>> {
         "delay" => Ok(Box::new(DelayExecutor)),
         "switch" => Ok(Box::new(SwitchExecutor)),
         "script" => Ok(Box::new(ScriptExecutor)),
+        "llm" => Ok(Box::new(LlmExecutor)),
+        "transform" => Ok(Box::new(TransformExecutor)),
+        "file" => Ok(Box::new(FileExecutor)),
         _ => anyhow::bail!("Unknown node type: {}", node_type),
+    }
+}
+
+// ==================== LLM Executor ====================
+
+pub struct LlmExecutor;
+
+#[async_trait]
+impl NodeExecutor for LlmExecutor {
+    async fn execute(
+        &self,
+        node: &Node,
+        global: &GlobalMemory,
+        nodes: &NodeMemory,
+    ) -> Result<NodeOutput> {
+        let template = TemplateEngine::new(global.clone(), nodes.clone());
+        
+        // Get API key from environment or params
+        let api_key = std::env::var("OPENAI_API_KEY")
+            .or_else(|_| {
+                node.params
+                    .get("api_key")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("OPENAI_API_KEY not found in environment or params"))
+            })?;
+
+        let base_url = node.params
+            .get("base_url")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| std::env::var("OPENAI_BASE_URL").ok())
+            .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+
+        let model = node.params
+            .get("model")
+            .and_then(|v| v.as_str())
+            .unwrap_or("gpt-3.5-turbo");
+
+        let system = node.params
+            .get("system")
+            .and_then(|v| v.as_str())
+            .map(|s| template.render(s))
+            .transpose()?;
+
+        let prompt = node.params
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .context("LLM node requires 'prompt' parameter")?;
+        
+        let rendered_prompt = template.render(prompt)?;
+
+        let temperature = node.params
+            .get("temperature")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.7);
+
+        let max_tokens = node.params
+            .get("max_tokens")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as i32);
+
+        log::info!("Calling LLM: {} (model: {})", node.name, model);
+
+        // Build messages
+        let mut messages = vec![];
+        if let Some(sys) = system {
+            messages.push(serde_json::json!({
+                "role": "system",
+                "content": sys
+            }));
+        }
+        messages.push(serde_json::json!({
+            "role": "user",
+            "content": rendered_prompt
+        }));
+
+        // Build request body
+        let mut request_body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "temperature": temperature
+        });
+
+        if let Some(tokens) = max_tokens {
+            request_body["max_tokens"] = serde_json::json!(tokens);
+        }
+
+        // Call OpenAI API
+        let client = reqwest::Client::new();
+        let response = client
+            .post(format!("{}/chat/completions", base_url))
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await
+            .context("Failed to call LLM API")?;
+
+        let status = response.status();
+        let response_text = response.text().await?;
+
+        if !status.is_success() {
+            anyhow::bail!("LLM API error ({}): {}", status, response_text);
+        }
+
+        let response_json: Value = serde_json::from_str(&response_text)
+            .context("Failed to parse LLM response")?;
+
+        let content = response_json["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        let usage = response_json.get("usage").cloned().unwrap_or(Value::Null);
+
+        let result = serde_json::json!({
+            "content": content,
+            "model": model,
+            "usage": usage
+        });
+
+        Ok(NodeOutput {
+            status: "success".to_string(),
+            output: result,
+        })
+    }
+}
+
+// ==================== Transform Executor ====================
+
+pub struct TransformExecutor;
+
+#[async_trait]
+impl NodeExecutor for TransformExecutor {
+    async fn execute(
+        &self,
+        node: &Node,
+        global: &GlobalMemory,
+        nodes: &NodeMemory,
+    ) -> Result<NodeOutput> {
+        let template = TemplateEngine::new(global.clone(), nodes.clone());
+        
+        let input = node.params
+            .get("input")
+            .context("Transform node requires 'input' parameter")?;
+
+        // Render input if it's a string
+        let input_value: Value = if let Some(input_str) = input.as_str() {
+            let rendered = template.render(input_str)?;
+            serde_json::from_str(&rendered)
+                .unwrap_or_else(|_| Value::String(rendered))
+        } else {
+            input.clone()
+        };
+
+        log::info!("Transforming data with JSONPath");
+
+        // Single path extraction
+        if let Some(path) = node.params.get("path").and_then(|v| v.as_str()) {
+            let mut selector = jsonpath_lib::selector(&input_value);
+            let result_vec = selector(path)
+                .context(format!("JSONPath '{}' evaluation failed", path))?;
+            
+            // Convert Vec<&Value> to Value
+            let result = Value::Array(result_vec.into_iter().cloned().collect());
+            
+            return Ok(NodeOutput {
+                status: "success".to_string(),
+                output: serde_json::json!({"result": result}),
+            });
+        }
+
+        // Multiple field extraction
+        if let Some(extract_obj) = node.params.get("extract").and_then(|v| v.as_object()) {
+            let mut result = serde_json::Map::new();
+            
+            for (key, path_value) in extract_obj {
+                if let Some(path) = path_value.as_str() {
+                    let mut selector = jsonpath_lib::selector(&input_value);
+                    let extracted_vec = selector(path)
+                        .context(format!("JSONPath '{}' evaluation failed", path))?;
+                    
+                    // Convert Vec<&Value> to Value
+                    let extracted = Value::Array(extracted_vec.into_iter().cloned().collect());
+                    result.insert(key.clone(), extracted);
+                }
+            }
+            
+            return Ok(NodeOutput {
+                status: "success".to_string(),
+                output: Value::Object(result),
+            });
+        }
+
+        anyhow::bail!("Transform node requires either 'path' or 'extract' parameter")
+    }
+}
+
+// ==================== File Executor ====================
+
+pub struct FileExecutor;
+
+#[async_trait]
+impl NodeExecutor for FileExecutor {
+    async fn execute(
+        &self,
+        node: &Node,
+        global: &GlobalMemory,
+        nodes: &NodeMemory,
+    ) -> Result<NodeOutput> {
+        let template = TemplateEngine::new(global.clone(), nodes.clone());
+        
+        let operation = node.params
+            .get("operation")
+            .and_then(|v| v.as_str())
+            .unwrap_or("read");
+
+        let path = node.params
+            .get("path")
+            .and_then(|v| v.as_str())
+            .context("File node requires 'path' parameter")?;
+
+        let rendered_path = template.render(path)?;
+
+        log::info!("File operation: {} on {}", operation, rendered_path);
+
+        match operation {
+            "read" => {
+                let content = tokio::fs::read_to_string(&rendered_path)
+                    .await
+                    .context(format!("Failed to read file: {}", rendered_path))?;
+
+                Ok(NodeOutput {
+                    status: "success".to_string(),
+                    output: serde_json::json!({
+                        "content": content,
+                        "path": rendered_path
+                    }),
+                })
+            }
+            "write" | "append" => {
+                let content = node.params
+                    .get("content")
+                    .context("File write/append requires 'content' parameter")?;
+
+                let content_str = match content {
+                    Value::String(s) => template.render(s)?,
+                    _ => content.to_string(),
+                };
+
+                if operation == "write" {
+                    tokio::fs::write(&rendered_path, content_str.as_bytes())
+                        .await
+                        .context(format!("Failed to write file: {}", rendered_path))?;
+                } else {
+                    use tokio::io::AsyncWriteExt;
+                    let mut file = tokio::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(&rendered_path)
+                        .await
+                        .context(format!("Failed to open file for append: {}", rendered_path))?;
+                    
+                    file.write_all(content_str.as_bytes())
+                        .await
+                        .context("Failed to append to file")?;
+                }
+
+                Ok(NodeOutput {
+                    status: "success".to_string(),
+                    output: serde_json::json!({
+                        "path": rendered_path,
+                        "operation": operation,
+                        "bytes_written": content_str.len()
+                    }),
+                })
+            }
+            _ => anyhow::bail!("Unsupported file operation: {}", operation),
+        }
     }
 }

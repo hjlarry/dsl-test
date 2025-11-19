@@ -118,6 +118,80 @@ nodes:
 - `python` / `python3` (需要安装 Python 3)
 - `javascript` / `js` / `node` (需要安装 Node.js)
 
+#### 6. LLM 节点 (AI调用)
+支持调用 OpenAI API 或兼容服务
+```yaml
+- id: "ai_analyze"
+  type: "llm"
+  name: "AI分析"
+  params:
+    model: "gpt-4"  # or "gpt-3.5-turbo"
+    system: "你是数据分析专家"
+    prompt: "分析这些数据：{{ nodes.fetch.output }}"
+    temperature: 0.7  # 可选，默认0.7
+    max_tokens: 500   # 可选
+```
+
+**配置**:
+- 需要设置环境变量 `OPENAI_API_KEY`
+- 或创建 `.env` 文件（参考 `.env.example`）
+- 支持自定义 `base_url` 参数使用兼容服务
+
+**输出格式**:
+```json
+{
+  "content": "AI生成的文本",
+  "model": "gpt-4",
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 50,
+    "total_tokens": 150
+  }
+}
+```
+
+#### 7. Transform 节点 (数据转换)
+使用 JSONPath 提取和转换 JSON 数据
+```yaml
+- id: "extract"
+  type: "transform"
+  name: "提取数据"
+  params:
+    input: "{{ nodes.api.output.body }}"
+    # 单字段提取
+    path: "$.data.users[*].name"
+    
+    # 或多字段提取
+    extract:
+      names: "$.users[*].name"
+      emails: "$.users[*].email"
+```
+
+**JSONPath 语法示例**:
+- `$.data` - 获取 data 字段
+- `$.users[0]` - 第一个用户
+- `$.users[*].name` - 所有用户的 name
+- `$[0:3]` - 前3个元素
+
+#### 8. File 节点 (文件操作)
+读写文件，持久化数据
+```yaml
+# 写文件
+- id: "save"
+  type: "file"
+  params:
+    operation: "write"  # or "read", "append"
+    path: "/tmp/result.json"
+    content: "{{ nodes.process.output }}"
+
+# 读文件
+- id: "load"
+  type: "file"
+  params:
+    operation: "read"
+    path: "./config.json"
+```
+
 ### 变量引用 (Variable Substitution)
 
 在 `params` 中使用 `{{ }}` 语法引用变量：

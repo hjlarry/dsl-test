@@ -20,6 +20,9 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env file if it exists
+    dotenv::dotenv().ok();
+    
     env_logger::init();
     let cli = Cli::parse();
 

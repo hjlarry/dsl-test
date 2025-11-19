@@ -1,0 +1,77 @@
+name: "LLM数据分析工作流"
+version: "1.0"
+
+global:
+  data_source: "https://jsonplaceholder.typicode.com/posts"
+
+nodes:
+  # 1. 获取数据
+  - id: "fetch_posts"
+    type: "http"
+    name: "获取帖子列表"
+    params:
+      method: "GET"
+      url: "{{ global.data_source }}"
+
+  # 2. 提取数据 (Transform)
+  - id: "extract_titles"
+    type: "transform"
+    name: "提取标题"
+    needs: ["fetch_posts"]
+    params:
+      input: "{{ nodes.fetch_posts.output.body }}"
+      extract:
+        titles: "$[0:5].title"  # 前5个标题
+        user_ids: "$[0:5].userId"
+
+  # 3. LLM 分析
+  - id: "analyze_titles"
+    type: "llm"
+    name: "AI分析标题"
+    needs: ["extract_titles"]
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: "你是一个内容分析专家"
+      prompt: |
+        分析以下文章标题，总结主要话题：
+        {{ nodes.extract_titles.output.titles }}
+        
+        请用简短的中文回答。
+      temperature: 0.7
+      max_tokens: 200
+
+  # 4. 保存分析结果
+  - id: "save_analysis"
+    type: "file"
+    name: "保存到文件"
+    needs: ["analyze_titles"]
+    params:
+      operation: "write"
+      path: "/tmp/llm_analysis.txt"
+      content: |
+        === AI 分析结果 ===
+        {{ nodes.analyze_titles.output.content }}
+        
+        --- 元数据 ---
+        模型: {{ nodes.analyze_titles.output.model }}
+        Token使用: {{ nodes.analyze_titles.output.usage }}
+
+  # 5. 读取确认
+  - id: "verify_save"
+    type: "file"
+    name: "读取确认"
+    needs: ["save_analysis"]
+    params:
+      operation: "read"
+      path: "/tmp/llm_analysis.txt"
+
+  # 6. 最终报告
+  - id: "final_report"
+    type: "shell"
+    name: "打印报告"
+    needs: ["verify_save"]
+    params:
+      command: |
+        echo "✅ 工作流完成"
+        echo "文件路径: {{ nodes.save_analysis.output.path }}"
+        echo "文件大小: {{ nodes.save_analysis.output.bytes_written }} 字节"
