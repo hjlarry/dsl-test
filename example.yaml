@@ -1,0 +1,47 @@
+name: "示例工作流"
+version: "1.0"
+
+# 全局变量
+global:
+  api_url: "https://jsonplaceholder.typicode.com"
+  message: "Hello from workflow"
+
+nodes:
+  # 节点1：获取数据 (无依赖，第一个执行)
+  - id: "fetch_data"
+    type: "http"
+    name: "获取用户数据"
+    params:
+      method: "GET"
+      url: "{{ global.api_url }}/users/1"
+
+  # 节点2和3：并行执行 (都依赖 fetch_data)
+  - id: "process_a"
+    type: "shell"
+    name: "处理A"
+    needs: ["fetch_data"]
+    params:
+      command: "echo '处理A完成: {{ global.message }}'"
+
+  - id: "process_b"
+    type: "shell"
+    name: "处理B"
+    needs: ["fetch_data"]
+    params:
+      command: "echo '处理B完成' && sleep 1"
+
+  # 节点4：等待 (依赖处理A)
+  - id: "wait"
+    type: "delay"
+    name: "等待500ms"
+    needs: ["process_a"]
+    params:
+      milliseconds: 500
+
+  # 节点5：组合结果 (依赖所有前面的节点)
+  - id: "combine"
+    type: "shell"
+    name: "组合结果"
+    needs: ["process_b", "wait"]
+    params:
+      command: "echo '所有任务完成！'"
