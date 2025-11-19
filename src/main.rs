@@ -16,6 +16,10 @@ struct Cli {
     /// Path to the workflow YAML file
     #[arg(short, long, value_name = "FILE")]
     file: PathBuf,
+
+    /// Input parameters in key=value format
+    #[arg(short, long, value_name = "KEY=VALUE")]
+    input: Vec<String>,
 }
 
 #[tokio::main]
@@ -31,8 +35,20 @@ async fn main() -> Result<()> {
     let content = fs::read_to_string(&cli.file)
         .with_context(|| format!("Could not read file `{:?}`", cli.file))?;
 
-    let workflow: schema::Workflow = serde_yaml::from_str(&content)
+    let mut workflow: schema::Workflow = serde_yaml::from_str(&content)
         .context("Failed to parse YAML workflow")?;
+
+    // Override/Add globals from CLI
+    for input in cli.input {
+        if let Some((key, value_str)) = input.split_once('=') {
+            let value = serde_json::from_str(value_str)
+                .unwrap_or_else(|_| serde_json::Value::String(value_str.to_string()));
+            
+            workflow.global.insert(key.to_string(), value);
+        } else {
+            log::warn!("Invalid input format: {}", input);
+        }
+    }
 
     println!("✅ Workflow parsed: {}", workflow.name);
     println!("📊 Global vars: {:?}", workflow.global);

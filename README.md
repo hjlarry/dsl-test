@@ -18,6 +18,9 @@ RUST_LOG=info cargo run -- -f examples/example.yaml
 
 # 运行自定义工作流
 cargo run -- -f /path/to/your/workflow.yaml
+
+# 传递输入参数 (覆盖全局变量)
+cargo run -- -f examples/example.yaml -i message="Hello from CLI" -i count=42
 ```
 
 ### 3. 发布构建 (Release build - optimized)
