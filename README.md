@@ -128,7 +128,7 @@ nodes:
 
 ### 支持的节点类型
 
-目前支持 **11 种节点类型**：
+目前支持 **12 种节点类型**：
 - **Shell**: 执行系统命令
 - **HTTP**: 发送 HTTP 请求
 - **Delay**: 延迟执行
@@ -140,6 +140,7 @@ nodes:
 - **Loop**: 循环迭代 (ForEach)
 - **Input**: 交互式用户输入
 - **Assign**: 更新全局变量
+- **MCP**: Model Context Protocol 工具调用
 
 #### Shell 节点
 执行系统命令
@@ -342,6 +343,28 @@ nodes:
 #### 11. Assign 节点 (更新全局变量)
 在工作流执行过程中更新全局变量，支持设置和追加操作
 ```yaml
+- id: "set_var"
+  type: "assign"
+  params:
+    assignments:
+      - key: "count"
+        value: 1
+        mode: "set"
+```
+
+#### 12. MCP 节点 (Model Context Protocol)
+调用支持 MCP 协议的服务器工具。支持 stdio 通信模式。
+```yaml
+- id: "call_tool"
+  type: "mcp"
+  params:
+    server:
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/Users/me/files"]
+    tool: "read_file"
+    arguments:
+      path: "/Users/me/files/test.txt"
+```
 - id: "update_vars"
   type: "assign"
   name: "更新变量"

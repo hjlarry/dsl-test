@@ -13,6 +13,7 @@ mod control;
 mod loop_node;
 mod input;
 mod assign;
+mod mcp;
 
 pub use shell::ShellExecutor;
 pub use http::HttpExecutor;
@@ -24,6 +25,7 @@ pub use control::{DelayExecutor, SwitchExecutor};
 pub use loop_node::LoopExecutor;
 pub use input::InputExecutor;
 pub use assign::AssignExecutor;
+pub use mcp::McpExecutor;
 
 #[async_trait]
 pub trait NodeExecutor: Send + Sync {
@@ -48,6 +50,7 @@ pub fn get_executor(node_type: &str) -> Result<Box<dyn NodeExecutor>> {
         "input" => Ok(Box::new(InputExecutor)),
         "loop" => Ok(Box::new(LoopExecutor)),
         "assign" => Ok(Box::new(AssignExecutor)),
+        "mcp" => Ok(Box::new(McpExecutor)),
         _ => anyhow::bail!("Unknown node type: {}", node_type),
     }
 }

@@ -1,0 +1,25 @@
+name: "MCP Test Workflow"
+version: "1.0"
+
+nodes:
+  - id: "call_add"
+    type: "mcp"
+    params:
+      server:
+        command: "python3"
+        args: ["tests/mcp_server.py"]
+      tool: "add"
+      arguments:
+        a: 10
+        b: 32
+
+  - id: "call_echo"
+    type: "mcp"
+    needs: ["call_add"]
+    params:
+      server:
+        command: "python3"
+        args: ["tests/mcp_server.py"]
+      tool: "echo"
+      arguments:
+        message: "Result is {{ nodes.call_add.output.content[0].text }}"

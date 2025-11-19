@@ -33,38 +33,37 @@ impl TemplateEngine {
 
     /// Resolve an expression like "global.api_url" or "nodes.fetch_data.output.stdout"
     fn resolve_expression(&self, expr: &str) -> Result<Value> {
-        let parts: Vec<&str> = expr.split('.').collect();
+        // Split by dot, but we need to handle array indexing like users[0]
+        // This is a simple implementation. For full JSONPath support, we'd need a parser.
+        // Here we convert "users[0].name" -> ["users", "0", "name"]
+        let parts: Vec<String> = expr
+            .replace('[', ".")
+            .replace(']', "")
+            .split('.')
+            .map(|s| s.to_string())
+            .collect();
+        
+        let parts_refs: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
 
-        match parts.get(0) {
+        match parts_refs.get(0) {
             Some(&"global") => {
-                if parts.len() < 2 {
+                if parts_refs.len() < 2 {
                     anyhow::bail!("Invalid global reference: {}", expr);
                 }
-                let key = parts[1];
+                let key = parts_refs[1];
                 let value = self
                     .global
                     .get(key)
                     .with_context(|| format!("Global variable '{}' not found", key))?;
                 
-                // Support nested access like global.obj.field
-                if parts.len() > 2 {
-                    let mut current = value;
-                    for &field_name in &parts[2..] {
-                        current = current.get(field_name)
-                            .cloned()
-                            .with_context(|| format!("Field '{}' not found in global variable '{}'", field_name, key))?;
-                    }
-                    Ok(current)
-                } else {
-                    Ok(value)
-                }
+                self.traverse_path(&value, &parts_refs[2..])
             }
             Some(&"nodes") => {
-                if parts.len() < 3 {
+                if parts_refs.len() < 3 {
                     anyhow::bail!("Invalid node reference: {}", expr);
                 }
-                let node_id = parts[1];
-                let field = parts[2];
+                let node_id = parts_refs[1];
+                let field = parts_refs[2];
 
                 match field {
                     "output" => {
@@ -73,42 +72,42 @@ impl TemplateEngine {
                             .get_output_value(node_id)
                             .with_context(|| format!("Node '{}' output not found", node_id))?;
                         
-                        // Support nested access like nodes.id.output.stdout
-                        if parts.len() > 3 {
-                            let mut current = output;
-                            for &field_name in &parts[3..] {
-                                current = current.get(field_name)
-                                    .cloned()
-                                    .with_context(|| format!("Field '{}' not found in output", field_name))?;
-                            }
-                            Ok(current)
-                        } else {
-                            Ok(output)
-                        }
+                        self.traverse_path(&output, &parts_refs[3..])
                     }
                     _ => anyhow::bail!("Unknown node field: {}", field),
                 }
             }
             Some(&"loop") => {
-                // Look for "loop" object in global memory
                 let loop_ctx = self.global.get("loop")
                     .context("Loop context not found (are you inside a loop node?)")?;
                 
-                // parts[0] is "loop"
-                if parts.len() < 2 {
+                if parts_refs.len() < 2 {
                      return Ok(loop_ctx);
                 }
                 
-                let mut current = loop_ctx;
-                for &field_name in &parts[1..] {
-                    current = current.get(field_name)
-                        .cloned()
-                        .with_context(|| format!("Field '{}' not found in loop context", field_name))?;
-                }
-                Ok(current)
+                self.traverse_path(&loop_ctx, &parts_refs[1..])
             }
             _ => anyhow::bail!("Unknown expression prefix: {}", expr),
         }
+    }
+
+    fn traverse_path(&self, value: &Value, path: &[&str]) -> Result<Value> {
+        let mut current = value.clone();
+        for &key in path {
+            if let Ok(index) = key.parse::<usize>() {
+                if let Some(arr) = current.as_array() {
+                    if let Some(v) = arr.get(index) {
+                        current = v.clone();
+                        continue;
+                    }
+                }
+            }
+            
+            current = current.get(key)
+                .cloned()
+                .with_context(|| format!("Field '{}' not found", key))?;
+        }
+        Ok(current)
     }
 
     fn value_to_string(&self, value: &Value) -> String {
