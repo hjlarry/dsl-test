@@ -46,5 +46,29 @@ async fn main() -> Result<()> {
     println!();
     println!("✨ Workflow execution completed!");
     
+    println!("\n📊 Final Execution Summary:");
+    println!("----------------------------------------");
+    
+    println!("Global Memory:");
+    let globals = engine.get_global_memory().get_all();
+    if globals.is_empty() {
+        println!("  (empty)");
+    } else {
+        for (k, v) in globals {
+            println!("  {}: {}", k, v);
+        }
+    }
+    
+    println!("\nNode Outputs:");
+    let outputs = engine.get_node_memory().get_all_values();
+    if outputs.is_empty() {
+        println!("  (empty)");
+    } else {
+        for (k, v) in outputs {
+            println!("  {}: {}", k, v);
+        }
+    }
+    println!("----------------------------------------");
+    
     Ok(())
 }

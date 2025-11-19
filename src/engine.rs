@@ -99,6 +99,7 @@ impl Engine {
                     let _permit = permit; // Hold permit until task completes
                     
                     log::info!("Executing node: {} ({})", node.name, node.id);
+                    log::info!("  Input Params: {}", serde_json::to_string_pretty(&node.params).unwrap_or_default());
                     
                     let executor = get_executor(&node.node_type)?;
                     let result = executor.execute(&node, &global, &nodes).await;
@@ -106,6 +107,7 @@ impl Engine {
                     match result {
                         Ok(output) => {
                             log::info!("Node {} completed with status: {}", node.id, output.status);
+                            log::info!("  Output: {}", serde_json::to_string_pretty(&output.output).unwrap_or_default());
                             nodes.set(node.id.clone(), output);
                             Ok(node.id)
                         }
