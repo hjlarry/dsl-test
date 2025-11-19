@@ -1,0 +1,51 @@
+name: "Loop和Input节点测试"
+version: "1.0"
+
+nodes:
+  # 1. 交互输入
+  - id: "ask_count"
+    type: "input"
+    name: "询问数量"
+    params:
+      prompt: "请输入要生成的随机数数量 (1-5):"
+      default: "3"
+
+  # 2. 生成数组 (Script)
+  - id: "generate_items"
+    type: "script"
+    name: "生成数组"
+    needs: ["ask_count"]
+    params:
+      language: "python"
+      script: |
+        import json
+        count = int("{{ nodes.ask_count.output }}")
+        items = [f"Item_{i+1}" for i in range(count)]
+        print(json.dumps(items))
+
+  # 3. 循环处理
+  - id: "process_loop"
+    type: "loop"
+    name: "循环处理"
+    needs: ["generate_items"]
+    params:
+      items: "{{ nodes.generate_items.output.stdout }}"
+      steps:
+        - id: "step1"
+          type: "shell"
+          params:
+            command: "echo 'Processing {{ loop.item }} (Index: {{ loop.index }})'"
+        
+        - id: "step2"
+          type: "delay"
+          needs: ["step1"]
+          params:
+            milliseconds: 500
+
+  # 4. 总结
+  - id: "summary"
+    type: "shell"
+    name: "总结"
+    needs: ["process_loop"]
+    params:
+      command: "echo 'Loop finished. Processed {{ nodes.process_loop.output.count }} items.'"

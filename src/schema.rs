@@ -13,6 +13,7 @@ pub struct Workflow {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Node {
     pub id: String,
+    #[serde(default)]
     pub name: String,
     #[serde(rename = "type")]
     pub node_type: String,

@@ -41,9 +41,23 @@ impl TemplateEngine {
                     anyhow::bail!("Invalid global reference: {}", expr);
                 }
                 let key = parts[1];
-                self.global
+                let value = self
+                    .global
                     .get(key)
-                    .with_context(|| format!("Global variable '{}' not found", key))
+                    .with_context(|| format!("Global variable '{}' not found", key))?;
+                
+                // Support nested access like global.obj.field
+                if parts.len() > 2 {
+                    let mut current = value;
+                    for &field_name in &parts[2..] {
+                        current = current.get(field_name)
+                            .cloned()
+                            .with_context(|| format!("Field '{}' not found in global variable '{}'", field_name, key))?;
+                    }
+                    Ok(current)
+                } else {
+                    Ok(value)
+                }
             }
             Some(&"nodes") => {
                 if parts.len() < 3 {
@@ -74,6 +88,24 @@ impl TemplateEngine {
                     }
                     _ => anyhow::bail!("Unknown node field: {}", field),
                 }
+            }
+            Some(&"loop") => {
+                // Look for "loop" object in global memory
+                let loop_ctx = self.global.get("loop")
+                    .context("Loop context not found (are you inside a loop node?)")?;
+                
+                // parts[0] is "loop"
+                if parts.len() < 2 {
+                     return Ok(loop_ctx);
+                }
+                
+                let mut current = loop_ctx;
+                for &field_name in &parts[1..] {
+                    current = current.get(field_name)
+                        .cloned()
+                        .with_context(|| format!("Field '{}' not found in loop context", field_name))?;
+                }
+                Ok(current)
             }
             _ => anyhow::bail!("Unknown expression prefix: {}", expr),
         }

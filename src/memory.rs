@@ -61,4 +61,11 @@ impl NodeMemory {
     pub fn get_output_value(&self, node_id: &str) -> Option<Value> {
         self.outputs.get(node_id).map(|v| v.output.clone())
     }
+
+    pub fn get_all_values(&self) -> std::collections::HashMap<String, Value> {
+        self.outputs
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().output.clone()))
+            .collect()
+    }
 }

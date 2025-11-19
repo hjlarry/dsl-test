@@ -361,6 +361,8 @@ pub fn get_executor(node_type: &str) -> Result<Box<dyn NodeExecutor>> {
         "llm" => Ok(Box::new(LlmExecutor)),
         "transform" => Ok(Box::new(TransformExecutor)),
         "file" => Ok(Box::new(FileExecutor)),
+        "input" => Ok(Box::new(InputExecutor)),
+        "loop" => Ok(Box::new(LoopExecutor)),
         _ => anyhow::bail!("Unknown node type: {}", node_type),
     }
 }
@@ -642,5 +644,168 @@ impl NodeExecutor for FileExecutor {
             }
             _ => anyhow::bail!("Unsupported file operation: {}", operation),
         }
+    }
+}
+
+// ==================== Input Executor ====================
+
+pub struct InputExecutor;
+
+#[async_trait]
+impl NodeExecutor for InputExecutor {
+    async fn execute(
+        &self,
+        node: &Node,
+        global: &GlobalMemory,
+        nodes: &NodeMemory,
+    ) -> Result<NodeOutput> {
+        let template = TemplateEngine::new(global.clone(), nodes.clone());
+        
+        let prompt = node.params
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Please enter value:");
+            
+        let rendered_prompt = template.render(prompt)?;
+        
+        let default = node.params
+            .get("default")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        // Use tokio's blocking task for stdin interaction to avoid blocking the runtime
+        let result = tokio::task::spawn_blocking(move || {
+            use std::io::{self, Write};
+            
+            print!("{} ", rendered_prompt);
+            if let Some(def) = &default {
+                print!("[default: {}] ", def);
+            }
+            io::stdout().flush().context("Failed to flush stdout")?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).context("Failed to read line")?;
+            
+            let trimmed = input.trim();
+            if trimmed.is_empty() {
+                if let Some(def) = default {
+                    return Ok(def);
+                }
+            }
+            
+            Ok::<String, anyhow::Error>(trimmed.to_string())
+        }).await??;
+
+        Ok(NodeOutput {
+            status: "success".to_string(),
+            output: Value::String(result),
+        })
+    }
+}
+
+// ==================== Loop Executor ====================
+
+pub struct LoopExecutor;
+
+#[async_trait]
+impl NodeExecutor for LoopExecutor {
+    async fn execute(
+        &self,
+        node: &Node,
+        global: &GlobalMemory,
+        nodes: &NodeMemory,
+    ) -> Result<NodeOutput> {
+        // We need to use crate::engine::Engine here. 
+        // Since this is inside a function, circular dependency is handled by the compiler.
+        use crate::engine::Engine;
+        use crate::schema::Workflow;
+
+        let template = TemplateEngine::new(global.clone(), nodes.clone());
+        
+        // 1. Get items to iterate
+        let items_param = node.params
+            .get("items")
+            .context("Loop node requires 'items' parameter")?;
+            
+        // If items is a string (template), render and parse it
+        let items: Vec<Value> = if let Some(s) = items_param.as_str() {
+            let rendered = template.render(s)?;
+            serde_json::from_str(&rendered)
+                .or_else(|_| {
+                    // If not JSON, maybe it's just a string we want to treat as a single item list?
+                    // Or maybe it failed to parse. Let's try to see if it's a JSON array.
+                    anyhow::bail!("Failed to parse 'items' as JSON array: {}", rendered)
+                })?
+        } else if let Some(arr) = items_param.as_array() {
+            arr.clone()
+        } else {
+            anyhow::bail!("'items' parameter must be an array")
+        };
+
+        // 2. Get steps (sub-workflow nodes)
+        let steps_val = node.params
+            .get("steps")
+            .context("Loop node requires 'steps' parameter")?;
+            
+        let steps: Vec<Node> = serde_json::from_value(steps_val.clone())
+            .context("Failed to parse 'steps' as list of Nodes")?;
+
+        log::info!("Looping over {} items with {} steps", items.len(), steps.len());
+
+        let mut results = Vec::new();
+
+        // 3. Iterate
+        for (index, item) in items.iter().enumerate() {
+            log::info!("Loop iteration {}/{}", index + 1, items.len());
+
+            // Create a sub-workflow
+            let sub_workflow = Workflow {
+                name: format!("{}_iter_{}", node.name, index),
+                version: "1.0".to_string(),
+                global: std::collections::HashMap::new(), // We'll inject global memory manually
+                nodes: steps.clone(),
+            };
+
+            // Create new Engine with SHARED global memory
+            // BUT we need to inject loop context.
+            // Since GlobalMemory is shared (Arc<DashMap>), modifying it would affect other parallel branches.
+            // We need a "Scope" concept. 
+            // For now, let's clone the GlobalMemory data into a NEW GlobalMemory for this iteration.
+            // This means writes in the loop won't be seen outside, which is probably safer for now.
+            // If we wanted shared global writes, we'd need to handle the 'loop' variable isolation differently.
+            
+            let iter_global = GlobalMemory::new();
+            // Copy existing globals
+            for (k, v) in global.get_all() {
+                iter_global.set(k, v);
+            }
+            
+            // Inject loop context
+            let loop_ctx = serde_json::json!({
+                "index": index,
+                "item": item,
+                "total": items.len()
+            });
+            iter_global.set("loop".to_string(), loop_ctx);
+
+            let engine = Engine::new_with_memory(sub_workflow, iter_global);
+            
+            // Execute sub-workflow
+            engine.execute().await?;
+            
+            // Collect outputs from this iteration
+            // We might want to return the output of the LAST node, or a map of all nodes?
+            // Let's return a map of all node outputs for this iteration.
+            let node_outputs: std::collections::HashMap<String, Value> = engine.get_node_memory().get_all_values();
+            results.push(serde_json::json!(node_outputs));
+        }
+
+        Ok(NodeOutput {
+            status: "success".to_string(),
+            output: serde_json::json!({
+                "iterations": results,
+                "count": results.len()
+            }),
+        })
     }
 }

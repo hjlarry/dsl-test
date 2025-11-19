@@ -49,7 +49,19 @@ nodes:
 
 ### 支持的节点类型
 
-#### 1. Shell 节点
+目前支持 **10 种节点类型**：
+- **Shell**: 执行系统命令
+- **HTTP**: 发送 HTTP 请求
+- **Delay**: 延迟执行
+- **Switch**: 条件判断
+- **Script**: 嵌入式脚本 (Python/JavaScript)
+- **LLM**: AI 大语言模型调用 (OpenAI API)
+- **Transform**: JSON 数据提取和转换 (JSONPath)
+- **File**: 文件读写操作
+- **Loop**: 循环迭代 (ForEach)
+- **Input**: 交互式用户输入
+
+#### Shell 节点
 执行系统命令
 ```yaml
 - id: "my_shell"
@@ -59,7 +71,7 @@ nodes:
     command: "echo 'Hello' && ls -la"
 ```
 
-#### 2. HTTP 节点
+#### HTTP 节点
 发送HTTP请求
 ```yaml
 - id: "api_call"
@@ -72,7 +84,7 @@ nodes:
       key: "value"
 ```
 
-#### 3. Delay 节点
+#### Delay 节点
 等待指定时间
 ```yaml
 - id: "wait"
@@ -82,7 +94,7 @@ nodes:
     milliseconds: 1000  # 等待1秒
 ```
 
-#### 4. Switch 节点 (条件判断)
+#### Switch 节点 (条件判断)
 根据条件选择不同的值或路径
 ```yaml
 - id: "condition"
@@ -100,7 +112,7 @@ nodes:
 - `>=` (大于等于), `<=` (小于等于)
 - `true`, `false` (布尔字面量)
 
-#### 5. Script 节点 (嵌入式脚本)
+#### Script 节点 (嵌入式脚本)
 执行 Python 或 JavaScript 脚本
 ```yaml
 - id: "data_process"
@@ -192,9 +204,72 @@ nodes:
     path: "./config.json"
 ```
 
+#### 9. Loop 节点 (循环)
+对数组中的每个元素执行相同的子工作流
+```yaml
+- id: "batch_process"
+  type: "loop"
+  name: "批量处理"
+  params:
+    items: "{{ nodes.fetch.output.urls }}"  # 数组
+    steps:
+      - id: "process_item"
+        type: "shell"
+        params:
+          command: "echo 'Processing {{ loop.item }} at index {{ loop.index }}'"
+      
+      - id: "save_item"
+        type: "file"
+        needs: ["process_item"]
+        params:
+          operation: "write"
+          path: "/tmp/item_{{ loop.index }}.txt"
+          content: "{{ loop.item }}"
+```
+
+**Loop 上下文变量**:
+- `{{ loop.item }}` - 当前迭代的元素
+- `{{ loop.index }}` - 当前索引 (从0开始)
+- `{{ loop.total }}` - 总元素数量
+
+**输出格式**:
+```json
+{
+  "iterations": [
+    {"process_item": {...}, "save_item": {...}},
+    {"process_item": {...}, "save_item": {...}}
+  ],
+  "count": 2
+}
+```
+
+#### 10. Input 节点 (交互输入)
+在工作流执行过程中暂停，等待用户输入
+```yaml
+- id: "ask_name"
+  type: "input"
+  name: "询问用户名"
+  params:
+    prompt: "请输入你的名字:"
+    default: "Guest"  # 可选，按回车使用默认值
+```
+
+**输出**: 用户输入的字符串
+```json
+"Alice"
+```
+
 ### 变量引用 (Variable Substitution)
 
 在 `params` 中使用 `{{ }}` 语法引用变量：
+
+```yaml
+- `{{ global.api_key }}` - 引用全局变量
+- `{{ nodes.fetch_data.output }}` - 引用其他节点的输出
+- `{{ nodes.http_call.output.body }}` - 嵌套字段访问
+- `{{ loop.item }}` - 循环中的当前元素 (仅在 Loop 节点内)
+- `{{ loop.index }}` - 循环索引 (仅在 Loop 节点内)
+```
 
 ```yaml
 global:

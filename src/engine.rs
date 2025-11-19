@@ -28,6 +28,14 @@ impl Engine {
         }
     }
 
+    pub fn new_with_memory(workflow: Workflow, global_memory: GlobalMemory) -> Self {
+        Self {
+            workflow,
+            global_memory,
+            node_memory: NodeMemory::new(),
+        }
+    }
+
     /// Execute the workflow with automatic parallelization based on dependencies
     pub async fn execute(&self) -> Result<()> {
         log::info!("Starting workflow execution: {}", self.workflow.name);
