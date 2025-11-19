@@ -278,7 +278,7 @@ nodes:
 }
 ```
 
-#### 10. Input 节点 (交互输入)
+#### 10. Input 节点 (Human in the loop)
 在工作流执行过程中暂停，等待用户输入
 ```yaml
 - id: "ask_name"

@@ -1,0 +1,25 @@
+name: "Loop Input Test"
+version: "1.0"
+
+global:
+  items: ["Apple", "Banana", "Cherry"]
+
+nodes:
+  - id: "loop_input"
+    type: "loop"
+    name: "Ask for price"
+    params:
+      items: "{{ global.items }}"
+      steps:
+        - id: "ask_price"
+          type: "input"
+          name: "Ask Price"
+          params:
+            prompt: "What is the price of {{ loop.item }}?"
+            default: "1.0"
+        
+        - id: "print_price"
+          type: "shell"
+          needs: ["ask_price"]
+          params:
+            command: "echo 'Price of {{ loop.item }} is {{ nodes.ask_price.output }}'"
