@@ -46,7 +46,8 @@ impl Engine {
 
         for node in &self.workflow.nodes {
             node_map.insert(node.id.clone(), node.clone());
-            dependencies.insert(node.id.clone(), node.needs.iter().cloned().collect());
+            let deps = node.needs.clone().unwrap_or_default();
+            dependencies.insert(node.id.clone(), deps.into_iter().collect());
         }
 
         // Track completed nodes

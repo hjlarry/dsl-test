@@ -1,0 +1,316 @@
+name: "True Distributed Test"
+version: "1.0"
+global: {}
+nodes:
+  - id: "init"
+    type: "script"
+    params:
+      language: "python"
+      script: "print('Starting distributed test')"
+  - id: "task_0"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 0 completed')"
+  - id: "task_1"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 1 completed')"
+  - id: "task_2"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 2 completed')"
+  - id: "task_3"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 3 completed')"
+  - id: "task_4"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 4 completed')"
+  - id: "task_5"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 5 completed')"
+  - id: "task_6"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 6 completed')"
+  - id: "task_7"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 7 completed')"
+  - id: "task_8"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 8 completed')"
+  - id: "task_9"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 9 completed')"
+  - id: "task_10"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 10 completed')"
+  - id: "task_11"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 11 completed')"
+  - id: "task_12"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 12 completed')"
+  - id: "task_13"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 13 completed')"
+  - id: "task_14"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 14 completed')"
+  - id: "task_15"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 15 completed')"
+  - id: "task_16"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 16 completed')"
+  - id: "task_17"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 17 completed')"
+  - id: "task_18"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 18 completed')"
+  - id: "task_19"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 19 completed')"
+  - id: "task_20"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 20 completed')"
+  - id: "task_21"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 21 completed')"
+  - id: "task_22"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 22 completed')"
+  - id: "task_23"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 23 completed')"
+  - id: "task_24"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 24 completed')"
+  - id: "task_25"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 25 completed')"
+  - id: "task_26"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 26 completed')"
+  - id: "task_27"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 27 completed')"
+  - id: "task_28"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 28 completed')"
+  - id: "task_29"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 29 completed')"
+  - id: "task_30"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 30 completed')"
+  - id: "task_31"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 31 completed')"
+  - id: "task_32"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 32 completed')"
+  - id: "task_33"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 33 completed')"
+  - id: "task_34"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 34 completed')"
+  - id: "task_35"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 35 completed')"
+  - id: "task_36"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 36 completed')"
+  - id: "task_37"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 37 completed')"
+  - id: "task_38"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 38 completed')"
+  - id: "task_39"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 39 completed')"
+  - id: "task_40"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 40 completed')"
+  - id: "task_41"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 41 completed')"
+  - id: "task_42"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 42 completed')"
+  - id: "task_43"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 43 completed')"
+  - id: "task_44"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 44 completed')"
+  - id: "task_45"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 45 completed')"
+  - id: "task_46"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 46 completed')"
+  - id: "task_47"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 47 completed')"
+  - id: "task_48"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 48 completed')"
+  - id: "task_49"
+    type: "script"
+    needs: ["init"]
+    params:
+      language: "python"
+      script: "import time; time.sleep(2); print('Task 49 completed')"
+  - id: "summary"
+    type: "script"
+    needs: ["task_0", "task_1", "task_2", "task_3", "task_4", "task_5", "task_6", "task_7", "task_8", "task_9", "task_10", "task_11", "task_12", "task_13", "task_14", "task_15", "task_16", "task_17", "task_18", "task_19", "task_20", "task_21", "task_22", "task_23", "task_24", "task_25", "task_26", "task_27", "task_28", "task_29", "task_30", "task_31", "task_32", "task_33", "task_34", "task_35", "task_36", "task_37", "task_38", "task_39", "task_40", "task_41", "task_42", "task_43", "task_44", "task_45", "task_46", "task_47", "task_48", "task_49"]
+    params:
+      language: "python"
+      script: "print('All tasks completed')"
+

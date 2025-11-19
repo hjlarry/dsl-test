@@ -37,7 +37,7 @@ pub struct NodeMemory {
     outputs: Arc<DashMap<String, NodeOutput>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NodeOutput {
     pub status: String,
     pub output: Value,

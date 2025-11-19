@@ -1,0 +1,42 @@
+name: "Distributed Test - 100 Nodes"
+version: "1.0"
+
+# 演示分布式执行：100个并行HTTP请求
+
+global:
+  node_count: 100
+
+nodes:
+  # 生成节点数组
+  - id: "init"
+    type: "script"
+    params:
+      language: "python"
+      script: |
+        import json
+        count = {{ global.node_count }}
+        print(json.dumps(list(range(1, count + 1))))
+
+  # 100个并行HTTP请求
+  - id: "parallel_requests"
+    type: "loop"
+    needs: ["init"]
+    params:
+      items: "{{ nodes.init.output.stdout }}"
+      steps:
+        - id: "api_call"
+          type: "http"
+          params:
+            method: "GET"
+            url: "https://jsonplaceholder.typicode.com/users/{{ loop.item }}"
+
+  # 汇总结果
+  - id: "summary"
+    type: "script"
+    needs: ["parallel_requests"]
+    params:
+      language: "python"
+      script: |
+        import json
+        count = {{ global.node_count }}
+        print(json.dumps({"message": f"Completed {count} parallel requests!"}))

@@ -1,0 +1,2 @@
+[2025-11-19T11:58:40Z ERROR workflow_engine::engine] Node api_call failed: error sending request for url (https://jsonplaceholder.typicode.com/users/13): error trying to connect: connection closed via error
+[2025-11-19T11:58:40Z ERROR workflow_engine::worker] [Worker worker-2] Node parallel_requests failed: Node execution failed
