@@ -1,0 +1,203 @@
+name: "Text Polishing · Translation Tool"
+version: "1.0"
+
+# cargo run -- -f converted/text_polishing.yaml -i url="https://langchain-ai.github.io/langgraph/llms.txt"
+
+global:
+  url: ""
+
+nodes:
+  # Step 1: 使用 FireCrawl 抓取网页内容（这里用HTTP模拟，因为我们没有FireCrawl工具）
+  - id: "scrape_url"
+    type: "http"
+    name: "Fetch URL Content"
+    params:
+      method: "GET"
+      url: "{{ global.url }}"
+
+  # Step 2: 初步改写（使用 Gemini 2.0 Flash）
+  - id: "preliminary_rewrite"
+    type: "llm"
+    needs: ["scrape_url"]
+    name: "Preliminary Rewriting"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        You are a seasoned language expert specializing in transforming English articles into high-quality, authentic Chinese content. Your task is not mere translation but a profound content reshaping, ensuring that the text aligns with the reading habits and expressive styles of Chinese readers while maintaining the core meaning and informational integrity of the original text.
+
+        **Mission Objectives:**
+
+        1. **Deep Understanding of the Original Text, Precise Grasp of Meaning**
+        2. **Natural and Authentic Chinese Expression**
+        3. **Complete Information, Accurate Delivery**
+        4. **Content Review, Refinement** - Remove irrelevant information from head and tail
+        5. **Polishing and Proofreading, Striving for Excellence**
+
+        **Output Requirements:**
+        - Output in Markdown format
+        - Retain images, links, code blocks, text formatting, lists, headings, blockquotes
+      prompt: |
+        **English original article:**
+
+        {{ nodes.scrape_url.output.body }}
+
+  # Step 3: 三个并行的评审LLM
+  # 3a: 语言流畅性和地道性评审
+  - id: "review_fluency"
+    type: "llm"
+    needs: ["preliminary_rewrite"]
+    name: "Language Fluency Review"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        You are a seasoned Chinese language expert and technical editor, specializing in evaluating the fluency, idiomaticity, and naturalness of Chinese texts.
+
+        **Review Focus:**
+        1. **Fluency**: Sentence fluency, cohesion, grammatical correctness
+        2. **Idiomaticity**: Vocabulary choice, collocation habits, sentence structure
+        3. **Naturalness**: Overall style, written/spoken balance, tone and emotion
+
+        **Important Constraints:**
+        - Do NOT suggest major structural changes
+        - Focus on expression methods and sentence structure
+        - Provide specific, actionable suggestions
+
+        **Output**: Markdown format review with specific suggestions
+      prompt: |
+        <article>
+          <source lang="en">
+            <content><![CDATA[{{ nodes.scrape_url.output.body }}]]></content>
+          </source>
+          <rewritten lang="zh">
+            <draft><![CDATA[{{ nodes.preliminary_rewrite.output.content }}]]></draft>
+          </rewritten>
+        </article>
+
+  # 3b: 内容准确性和逻辑性评审
+  - id: "review_accuracy"
+    type: "llm"
+    needs: ["preliminary_rewrite"]
+    name: "Content Accuracy Review"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        You are a seasoned academic editor, technical content auditor, and fact-checker, specializing in evaluating the content accuracy, logic, and completeness of texts.
+
+        **Review Focus:**
+        1. **Accuracy**: Information consistency, terminology accuracy, fact-checking
+        2. **Logic**: Overall structure, paragraph relationships, conceptual consistency
+        3. **Completeness**: Background information, argumentation completeness, information coverage
+
+        **Important Constraints:**
+        - Do NOT suggest major structural changes
+        - Focus on accuracy and logic of existing content
+
+        **Output**: Markdown format review with specific suggestions
+      prompt: |
+        <article>
+          <source lang="en">
+            <content><![CDATA[{{ nodes.scrape_url.output.body }}]]></content>
+          </source>
+          <rewritten lang="zh">
+            <draft><![CDATA[{{ nodes.preliminary_rewrite.output.content }}]]></draft>
+          </rewritten>
+        </article>
+
+  # 3c: 风格一致性和目标读者适配性评审
+  - id: "review_style"
+    type: "llm"
+    needs: ["preliminary_rewrite"]
+    name: "Style Consistency Review"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        You are a seasoned copywriter, technical communication expert, and user experience researcher, specializing in evaluating the stylistic consistency, target audience suitability, and overall communication effectiveness of texts.
+
+        **Review Focus:**
+        1. **Style Consistency**: Overall style, tone, word choice, writing rhythm
+        2. **Target Audience Appropriateness**: Language difficulty, content depth, expression methods
+        3. **Overall Effectiveness**: Attractiveness, clarity, persuasiveness, memorability
+
+        **Important Constraints:**
+        - Do NOT suggest major structural changes
+        - Focus on style and audience suitability
+
+        **Output**: Markdown format review with specific suggestions
+      prompt: |
+        <article>
+          <source lang="en">
+            <content><![CDATA[{{ nodes.scrape_url.output.body }}]]></content>
+          </source>
+          <rewritten lang="zh">
+            <draft><![CDATA[{{ nodes.preliminary_rewrite.output.content }}]]></draft>
+          </rewritten>
+        </article>
+
+  # Step 4: 综合改进（整合三个评审意见）
+  - id: "comprehensive_improvement"
+    type: "llm"
+    needs: ["review_fluency", "review_accuracy", "review_style"]
+    name: "Comprehensive Improvement"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        你是一位资深的技术编辑和语言专家，擅长整合多方意见，对文本进行综合改进和优化。你的任务是：基于英文原文、初步改写稿以及三个评审 LLM 的意见，生成一份最终改进版的中文改写文章。
+
+        **任务目标：**
+        生成一份最终改进版的中文改写文章，该文章应：
+        1. 准确、完整地传达原文的所有信息
+        2. 语言流畅、地道、自然，符合中文表达习惯
+        3. 逻辑清晰、严谨，论证充分
+        4. 风格一致，符合目标读者的阅读习惯
+        5. 最大程度的整合三个评审 LLM 的合理建议
+
+        **重要规则：**
+        1. 全面评估评审意见，优先采纳具体、明确、可操作的建议
+        2. 保持文章结构稳定，不要大幅度调整
+        3. 优先改进表达方式
+        4. 平衡技术性和通俗性
+        5. 保持与原文的一致性
+
+        **输出**: Markdown格式的改进后的文章
+      prompt: |
+        <article>
+          <source lang="en">
+            <content><![CDATA[{{ nodes.scrape_url.output.body }}]]></content>
+          </source>
+          <rewritten lang="zh">
+            <draft><![CDATA[{{ nodes.preliminary_rewrite.output.content }}]]></draft>
+            <review>
+              <llm1><![CDATA[{{ nodes.review_fluency.output.content }}]]></llm1>
+              <llm2><![CDATA[{{ nodes.review_accuracy.output.content }}]]></llm2>
+              <llm3><![CDATA[{{ nodes.review_style.output.content }}]]></llm3>
+            </review>
+          </rewritten>
+        </article>
+
+  # Step 5: 最终润色
+  - id: "final_polish"
+    type: "llm"
+    needs: ["comprehensive_improvement"]
+    name: "Final Polish"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: |
+        You are a seasoned language expert, technical editor, and proofreader, specializing in text polishing, proofreading, and consistency checks. Please perform the final polishing and consistency check on the article to ensure it reaches optimal quality.
+
+        **Key Areas of Focus:**
+        1. **Language Polishing**: Vocabulary, sentence structure, tone, pacing
+        2. **Content Proofreading**: Factual errors, logical gaps, unclear expressions
+        3. **Consistency Check**: Terminology, style, punctuation, formatting, proper nouns
+        4. **Audience Adaptation**: Language difficulty, expression style, technicality
+
+        **Important Notes:**
+        - This is the final polishing stage; only minor adjustments should be made
+        - No major changes should be introduced
+
+        **Output**: Final polished article in Markdown format
+      prompt: |
+        <article>
+          <rewritten lang="zh">
+            <revised><![CDATA[{{ nodes.comprehensive_improvement.output.content }}]]></revised>
+          </rewritten>
+        </article>
