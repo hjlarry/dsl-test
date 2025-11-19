@@ -82,6 +82,42 @@ nodes:
     milliseconds: 1000  # 等待1秒
 ```
 
+#### 4. Switch 节点 (条件判断)
+根据条件选择不同的值或路径
+```yaml
+- id: "condition"
+  type: "switch"
+  name: "条件判断"
+  params:
+    condition: "{{ nodes.fetch.output.status }} > 100"
+    true_value: "高分处理"
+    false_value: "常规处理"
+```
+
+**支持的条件运算符**:
+- `==` (等于), `!=` (不等于)
+- `>` (大于), `<` (小于)
+- `>=` (大于等于), `<=` (小于等于)
+- `true`, `false` (布尔字面量)
+
+#### 5. Script 节点 (嵌入式脚本)
+执行 Python 或 JavaScript 脚本
+```yaml
+- id: "data_process"
+  type: "script"
+  name: "数据处理"
+  params:
+    language: "python"  # or "javascript", "js", "node"
+    script: |
+      import json
+      data = {"result": 42}
+      print(json.dumps(data))
+```
+
+**支持的语言**:
+- `python` / `python3` (需要安装 Python 3)
+- `javascript` / `js` / `node` (需要安装 Node.js)
+
 ### 变量引用 (Variable Substitution)
 
 在 `params` 中使用 `{{ }}` 语法引用变量：

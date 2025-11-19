@@ -1,0 +1,55 @@
+name: "条件和脚本节点演示"
+version: "1.0"
+
+global:
+  threshold: "75"
+
+nodes:
+  # 1. Python 生成随机分数
+  - id: "generate_score"
+    type: "script"
+    name: "生成随机分数"
+    params:
+      language: "python"
+      script: |
+        import random
+        score = random.randint(50, 100)
+        print(score)
+
+  # 2. 条件判断：分数是否及格
+  - id: "check_pass"
+    type: "switch"
+    name: "检查是否及格"
+    needs: ["generate_score"]
+    params:
+      condition: "80 > {{ global.threshold }}"
+      true_value: "✅ 及格"
+      false_value: "❌ 不及格"
+
+  # 3. JavaScript 处理结果
+  - id: "process_result"
+    type: "script"
+    name: "JS 处理结果"
+    needs: ["check_pass"]
+    params:
+      language: "javascript"
+      script: |
+        const result = "{{ nodes.check_pass.output.value }}";
+        const condition = {{ nodes.check_pass.output.result }};
+        
+        console.log("=".repeat(40));
+        console.log("📊 成绩评估结果");
+        console.log("=".repeat(40));
+        console.log(`条件满足: ${condition}`);
+        console.log(`评估结果: ${result}`);
+        console.log("=".repeat(40));
+
+  # 4. 生成报告
+  - id: "final_summary"
+    type: "shell"
+    name: "最终总结"
+    needs: ["process_result"]
+    params:
+      command: |
+        echo "🎓 工作流执行完成"
+        echo "条件节点和脚本节点都运行成功！"

@@ -31,7 +31,7 @@ impl TemplateEngine {
         Ok(result)
     }
 
-    /// Resolve an expression like "global.api_url" or "nodes.fetch_data.output"
+    /// Resolve an expression like "global.api_url" or "nodes.fetch_data.output.stdout"
     fn resolve_expression(&self, expr: &str) -> Result<Value> {
         let parts: Vec<&str> = expr.split('.').collect();
 
@@ -53,10 +53,25 @@ impl TemplateEngine {
                 let field = parts[2];
 
                 match field {
-                    "output" => self
-                        .nodes
-                        .get_output_value(node_id)
-                        .with_context(|| format!("Node '{}' output not found", node_id)),
+                    "output" => {
+                        let output = self
+                            .nodes
+                            .get_output_value(node_id)
+                            .with_context(|| format!("Node '{}' output not found", node_id))?;
+                        
+                        // Support nested access like nodes.id.output.stdout
+                        if parts.len() > 3 {
+                            let mut current = output;
+                            for &field_name in &parts[3..] {
+                                current = current.get(field_name)
+                                    .cloned()
+                                    .with_context(|| format!("Field '{}' not found in output", field_name))?;
+                            }
+                            Ok(current)
+                        } else {
+                            Ok(output)
+                        }
+                    }
                     _ => anyhow::bail!("Unknown node field: {}", field),
                 }
             }

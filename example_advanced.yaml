@@ -1,0 +1,100 @@
+name: "高级工作流示例"
+version: "1.0"
+
+global:
+  threshold: "100"
+  api_url: "https://jsonplaceholder.typicode.com"
+
+nodes:
+  # 1. 获取随机数据
+  - id: "fetch_post"
+    type: "http"
+    name: "获取帖子数据"
+    params:
+      method: "GET"
+      url: "{{ global.api_url }}/posts/1"
+
+  # 2. Python 脚本处理数据
+  - id: "process_with_python"
+    type: "script"
+    name: "Python 数据处理"
+    needs: ["fetch_post"]
+    params:
+      language: "python"
+      script: |
+        import json
+        import random
+        
+        # 生成一个随机分数
+        score = random.randint(50, 150)
+        print(f"Generated score: {score}")
+        
+        # 输出 JSON
+        result = {"score": score, "status": "processed"}
+        print(json.dumps(result))
+
+  # 3. Shell 提取分数 (直接从 Python stdout 提取)
+  - id: "extract_score"
+    type: "shell"
+    name: "提取分数"
+    needs: ["process_with_python"]
+    params:
+      command: |
+        echo "分数已通过 Python 生成"
+        # 模拟从输出中提取的值，实际使用中可以做 JSON 解析
+        echo "120"  # 模拟一个分数
+
+  # 4. 条件判断
+  - id: "check_threshold"
+    type: "switch"
+    name: "检查是否超过阈值"
+    needs: ["extract_score"]
+    params:
+      # 使用嵌套访问：nodes.extract_score.output.stdout 获取分数
+      condition: "120 > {{ global.threshold }}"
+      true_value: "分数超过阈值，执行高优先级处理"
+      false_value: "分数未达标，执行常规处理"
+
+  # 5a. 高分处理 (仅当条件为真时手动控制)
+  - id: "high_priority"
+    type: "script"
+    name: "JavaScript 高优先级处理"
+    needs: ["check_threshold"]
+    params:
+      language: "javascript"
+      script: |
+        console.log("🎉 执行高优先级处理!");
+        console.log("条件结果: {{ nodes.check_threshold.output.result }}");
+        
+        const data = {
+          priority: "high",
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log(JSON.stringify(data, null, 2));
+
+  # 5b. 低分处理
+  - id: "normal_priority"
+    type: "shell"
+    name: "常规处理"
+    needs: ["check_threshold"]
+    params:
+      command: |
+        echo "⚙️ 执行常规处理"
+        echo "条件结果: {{ nodes.check_threshold.output.result }}"
+
+  # 6. 汇总报告
+  - id: "final_report"
+    type: "script"
+    name: "生成最终报告"
+    needs: ["high_priority", "normal_priority"]
+    params:
+      language: "python"
+      script: |
+        print("=" * 50)
+        print("📊 工作流执行报告")
+        print("=" * 50)
+        print("原始分数: {{ nodes.extract_score.output.stdout }}")
+        print("阈值: {{ global.threshold }}")
+        print("条件结果: {{ nodes.check_threshold.output.result }}")
+        print("=" * 50)
