@@ -1,4 +1,4 @@
-use crate::executor::get_executor;
+use crate::nodes::get_executor;
 use crate::memory::{GlobalMemory, NodeMemory};
 use crate::schema::Workflow;
 use anyhow::{Context, Result};
