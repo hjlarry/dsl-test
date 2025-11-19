@@ -64,19 +64,9 @@ impl NodeExecutor for LoopExecutor {
                 nodes: steps.clone(),
             };
 
-            // Create new Engine with SHARED global memory
-            // BUT we need to inject loop context.
-            // Since GlobalMemory is shared (Arc<DashMap>), modifying it would affect other parallel branches.
-            // We need a "Scope" concept. 
-            // For now, let's clone the GlobalMemory data into a NEW GlobalMemory for this iteration.
-            // This means writes in the loop won't be seen outside, which is probably safer for now.
-            // If we wanted shared global writes, we'd need to handle the 'loop' variable isolation differently.
-            
-            let iter_global = GlobalMemory::new();
-            // Copy existing globals
-            for (k, v) in global.get_all() {
-                iter_global.set(k, v);
-            }
+            // Use the SAME global memory to allow state sharing and accumulation across iterations.
+            // We clone the Arc, so it points to the same DashMap.
+            let iter_global = global.clone();
             
             // Inject loop context
             let loop_ctx = serde_json::json!({

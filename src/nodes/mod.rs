@@ -12,6 +12,7 @@ mod file;
 mod control;
 mod loop_node;
 mod input;
+mod assign;
 
 pub use shell::ShellExecutor;
 pub use http::HttpExecutor;
@@ -22,6 +23,7 @@ pub use file::FileExecutor;
 pub use control::{DelayExecutor, SwitchExecutor};
 pub use loop_node::LoopExecutor;
 pub use input::InputExecutor;
+pub use assign::AssignExecutor;
 
 #[async_trait]
 pub trait NodeExecutor: Send + Sync {
@@ -45,6 +47,7 @@ pub fn get_executor(node_type: &str) -> Result<Box<dyn NodeExecutor>> {
         "file" => Ok(Box::new(FileExecutor)),
         "input" => Ok(Box::new(InputExecutor)),
         "loop" => Ok(Box::new(LoopExecutor)),
+        "assign" => Ok(Box::new(AssignExecutor)),
         _ => anyhow::bail!("Unknown node type: {}", node_type),
     }
 }

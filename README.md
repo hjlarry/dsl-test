@@ -84,7 +84,7 @@ nodes:
 
 ### 支持的节点类型
 
-目前支持 **10 种节点类型**：
+目前支持 **11 种节点类型**：
 - **Shell**: 执行系统命令
 - **HTTP**: 发送 HTTP 请求
 - **Delay**: 延迟执行
@@ -95,6 +95,7 @@ nodes:
 - **File**: 文件读写操作
 - **Loop**: 循环迭代 (ForEach)
 - **Input**: 交互式用户输入
+- **Assign**: 更新全局变量
 
 #### Shell 节点
 执行系统命令
@@ -292,6 +293,35 @@ nodes:
 **输出**: 用户输入的字符串
 ```json
 "Alice"
+```
+
+#### 11. Assign 节点 (更新全局变量)
+在工作流执行过程中更新全局变量，支持设置和追加操作
+```yaml
+- id: "update_vars"
+  type: "assign"
+  name: "更新变量"
+  params:
+    assignments:
+      - key: "counter"
+        value: "42"
+        mode: "set"  # 默认为 "set"
+      
+      - key: "results"
+        value: "{{ nodes.process.output }}"
+        mode: "append"  # 追加到数组
+```
+
+**支持的模式**:
+- `set`: 设置变量值（覆盖）
+- `append`: 将值追加到数组（如果变量不是数组，操作会被忽略）
+
+**输出**: 返回所有更新后的变量值
+```json
+{
+  "counter": 42,
+  "results": [...]
+}
 ```
 
 ### 变量引用 (Variable Substitution)

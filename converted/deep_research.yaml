@@ -1,0 +1,126 @@
+name: "Deep Research"
+version: "1.0"
+
+global:
+  depth: 3
+  topics: []
+  findings: []
+  nextSearchTopic: "Quantum Computing"
+  shouldContinue: true
+
+nodes:
+  # 1. Generate iteration array [0, 1, ..., depth-1]
+  - id: "init_array"
+    type: "script"
+    name: "Create Array"
+    params:
+      language: "python"
+      script: |
+        import json
+        depth = {{ global.depth }}
+        print(json.dumps(list(range(depth))))
+
+  # 2. Main Research Loop
+  - id: "research_loop"
+    type: "loop"
+    needs: ["init_array"]
+    name: "Research Iteration"
+    params:
+      items: "{{ nodes.init_array.output.stdout }}"
+      steps:
+        # Step 2.1: Analyze current state and decide next step
+        - id: "analyze"
+          type: "llm"
+          name: "Analyze & Plan"
+          params:
+            model: "deepseek-ai/DeepSeek-V3"
+            system: "You are a research agent. Decide what to search next."
+            prompt: |
+              Current Topic: {{ global.nextSearchTopic }}
+              
+              Findings so far:
+              {{ global.findings }}
+              
+              Searched Topics:
+              {{ global.topics }}
+              
+              Output JSON with:
+              - nextSearchTopic: string (new topic to search)
+              - shouldContinue: boolean (false if done)
+            response_format: "json"
+
+        # Step 2.2: Parse LLM output
+        - id: "parse_plan"
+          type: "transform"
+          needs: ["analyze"]
+          params:
+            input: "{{ nodes.analyze.output.content }}"
+            extract:
+              next: "$.nextSearchTopic"
+              continue: "$.shouldContinue"
+
+        # Step 2.3: Update global state (topics, nextSearchTopic, shouldContinue)
+        - id: "update_state"
+          type: "assign"
+          needs: ["parse_plan"]
+          params:
+            assignments:
+              - key: "nextSearchTopic"
+                value: "{{ nodes.parse_plan.output.next }}"
+              - key: "shouldContinue"
+                value: "{{ nodes.parse_plan.output.continue }}"
+              - key: "topics"
+                value: "{{ nodes.parse_plan.output.next }}"
+                mode: "append"
+
+        # Step 2.4: Conditional Search (Only if shouldContinue is true)
+        - id: "check_continue"
+          type: "switch"
+          needs: ["update_state"]
+          params:
+            condition: "{{ global.shouldContinue }} == true"
+            true_value: "search"
+            false_value: "skip"
+
+        # Step 2.5: Search (Simulated with HTTP/Script since we don't have Tavily node)
+        # We'll use a script to mock search or call a real API if configured
+        - id: "search"
+          type: "script"
+          needs: ["check_continue"]
+          params:
+            language: "python"
+            script: |
+              import json
+              topic = "{{ global.nextSearchTopic }}"
+              # Mock search result
+              result = f"Found information about {topic}: It is a fascinating field."
+              print(json.dumps({"content": result}))
+
+        # Step 2.6: Add findings
+        - id: "add_finding"
+          type: "assign"
+          needs: ["search"]
+          params:
+            assignments:
+              - key: "findings"
+                value: "{{ nodes.search.output.stdout }}" # This is a JSON string, might need parsing? 
+                # Actually script output is {"stdout": "...", ...}
+                # And inside stdout is JSON. 
+                # Let's just append the raw string for simplicity or improve script to return object.
+                mode: "append"
+
+  # 3. Final Reasoning
+  - id: "final_report"
+    type: "llm"
+    needs: ["research_loop"]
+    name: "Generate Report"
+    params:
+      model: "deepseek-ai/DeepSeek-V3"
+      system: "You are a research assistant. Summarize the findings."
+      prompt: |
+        Research Topic: {{ global.nextSearchTopic }}
+        
+        All Findings:
+        {{ global.findings }}
+        
+        Please write a comprehensive report.
